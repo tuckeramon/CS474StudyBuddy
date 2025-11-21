@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "C:\\Users\\tucke\\Documents\\GitHub\\CS474StudyBuddy\\public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .output-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .download-links {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 8px;
+        }
+
+        .download-links.active {
+            display: block;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 AI Quiz Generator</h1>
+        <p class="subtitle">Upload a PDF or DOCX file to generate practice questions and flashcards</p>
+
+        <div class="section">
+            <div class="section-title">Select Output Formats:</div>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="generatePdf" checked>
+                    <label for="generatePdf">📄 Generate Practice Test PDF</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="generateQuizlet" checked>
+                    <label for="generateQuizlet">📝 Generate Quizlet Text File</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.txt">
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                📚 Upload Study File
+            </button>
+            <div id="fileStatus" class="status info" style="display:none;"></div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing with Gemini AI... This may take a minute.</p>
+        </div>
+
+        <div class="section" id="outputSection" style="display:none;">
+            <div class="section-title">Results:</div>
+            <div class="output-box" id="output"></div>
+        </div>
+
+        <div class="download-links" id="downloadLinks">
+            <div class="section-title">📥 Download Your Files:</div>
+            <div id="downloadButtons"></div>
+        </div>
+
+        <div class="footer">
+            Files are generated in your browser and saved directly to your downloads folder
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyC3XOsYy-Tqw25cAK_opEZ0435vZQnvKl0";
+        let generatedData = null;
+
+        // Set up PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const generatePdf = document.getElementById('generatePdf').checked;
+            const generateQuizlet = document.getElementById('generateQuizlet').checked;
+
+            if (!generatePdf && !generateQuizlet) {
+                showStatus('Please select at least one output format', 'error');
+                return;
+            }
+
+            showStatus(`Selected: ${file.name}`, 'info');
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('outputSection').style.display = 'none';
+            document.getElementById('downloadLinks').classList.remove('active');
+
+            try {
+                // Extract text from file
+                let textContent = '';
+                const fileExt = file.name.split('.').pop().toLowerCase();
+
+                if (fileExt === 'pdf') {
+                    textContent = await extractTextFromPDF(file);
+                } else if (fileExt === 'docx') {
+                    textContent = await extractTextFromDOCX(file);
+                } else {
+                    textContent = await file.text();
+                }
+
+                if (!textContent.trim()) {
+                    throw new Error('No text could be extracted from the file');
+                }
+
+                // Generate quiz with Gemini
+                const data = await generateQuizWithGemini(textContent);
+                generatedData = data;
+
+                // Display results
+                displayResults(data, generatePdf, generateQuizlet);
+
+                // Generate downloads
+                if (generatePdf) {
+                    generatePDF(data.questions);
+                }
+                if (generateQuizlet) {
+                    generateQuizletFile(data.quizlet);
+                }
+
+                showStatus('✓ Quiz Generated Successfully!', 'success');
+
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let text = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items.map(item => item.str).join(' ');
+                text += pageText + '\n';
+            }
+
+            return text;
+        }
+
+        async function extractTextFromDOCX(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            return result.value;
+        }
+
+        async function generateQuizWithGemini(textContent) {
+            const prompt = `
+You are reading study material. Based on the content below, generate practice questions and study materials.
+
+Produce ONLY valid JSON with this exact structure:
+{
+    "questions": [
+        {
+            "question": "question text here",
+            "options": ["option A", "option B", "option C", "option D"],
+            "correct_answer": "the correct option text"
+        }
+    ],
+    "quizlet": [
+        {
+            "term": "key term",
+            "definition": "definition of the term"
+        }
+    ]
+}
+
+Generate at least 10 multiple choice questions and 15 flashcard terms.
+The questions and terms MUST be based ONLY on the material provided below.
+
+STUDY MATERIAL:
+${textContent}
+            `;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                })
+            });
+
+            const result = await response.json();
+            
+            if (!result.candidates || !result.candidates[0]) {
+                throw new Error('No response from Gemini API');
+            }
+
+            let resultText = result.candidates[0].content.parts[0].text;
+
+            // Clean up response
+            if (resultText.includes('```json')) {
+                resultText = resultText.split('```json')[1].split('```')[0].trim();
+            } else if (resultText.includes('```')) {
+                resultText = resultText.split('```')[1].split('```')[0].trim();
+            }
+
+            const data = JSON.parse(resultText);
+
+            if (!data.questions || !data.quizlet) {
+                throw new Error('Invalid response format from AI');
+            }
+
+            return data;
+        }
+
+        function displayResults(data, showPdf, showQuizlet) {
+            const output = document.getElementById('output');
+            let text = `✓ Generated ${data.questions.length} questions and ${data.quizlet.length} flashcards\n\n`;
+
+            if (showPdf) {
+                text += '--- Sample Questions ---\n\n';
+                const sampleQuestions = data.questions.slice(0, 5);
+                
+                sampleQuestions.forEach((q, i) => {
+                    text += `Q${i + 1}: ${q.question}\n`;
+                    q.options.forEach(opt => {
+                        text += `  • ${opt}\n`;
+                    });
+                    text += `✓ Answer: ${q.correct_answer}\n\n`;
+                });
+
+                if (data.questions.length > 5) {
+                    text += `... and ${data.questions.length - 5} more questions in the PDF\n`;
+                }
+            }
+
+            output.textContent = text;
+            document.getElementById('outputSection').style.display = 'block';
+        }
+
+        function generatePDF(questions) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let yPosition = 20;
+            const lineHeight = 7;
+            const pageHeight = doc.internal.pageSize.height;
+            const margin = 20;
+
+            doc.setFontSize(12);
+
+            questions.forEach((q, index) => {
+                // Check if we need a new page
+                if (yPosition > pageHeight - 40) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+
+                // Question
+                const questionText = `Q${index + 1}: ${q.question}`;
+                const questionLines = doc.splitTextToSize(questionText, 170);
+                doc.text(questionLines, margin, yPosition);
+                yPosition += questionLines.length * lineHeight;
+
+                // Options
+                q.options.forEach(option => {
+                    const optionText = `    - ${option}`;
+                    const optionLines = doc.splitTextToSize(optionText, 170);
+                    doc.text(optionLines, margin, yPosition);
+                    yPosition += optionLines.length * lineHeight;
+                });
+
+                // Answer
+                const answerText = `Answer: ${q.correct_answer}`;
+                const answerLines = doc.splitTextToSize(answerText, 170);
+                doc.text(answerLines, margin, yPosition);
+                yPosition += answerLines.length * lineHeight + 5;
+            });
+
+            // Save PDF
+            doc.save('quiz.pdf');
+            
+            // Add download button
+            addDownloadButton('📄 Quiz PDF Downloaded', null, 'pdf');
+        }
+
+        function generateQuizletFile(quizletData) {
+            let content = '';
+            quizletData.forEach(item => {
+                content += `${item.term}\t${item.definition}\n`;
+            });
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'quizlet.txt';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+
+            addDownloadButton('📝 Quizlet TXT Downloaded', null, 'txt');
+        }
+
+        function addDownloadButton(text, href, type) {
+            const downloadButtons = document.getElementById('downloadButtons');
+            const button = document.createElement('span');
+            button.className = 'download-btn';
+            button.textContent = text;
+            button.style.cursor = 'default';
+            downloadButtons.appendChild(button);
+            document.getElementById('downloadLinks').classList.add('active');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('fileStatus');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
